@@ -32,6 +32,6 @@ def play_video(cap):
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    cap = load_video("../data/raw/VID-20250430-WA0006.mp4")  # Change if needed
-    if cap:
+   cap = load_video("C:/Users/aghog/smart table tennis analyzer new/data/raw/VID-20250430-WA0006.mp4")  # Change if needed
+if cap:
         play_video(cap)
