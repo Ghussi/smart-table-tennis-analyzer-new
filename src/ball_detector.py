@@ -4,7 +4,7 @@ import time
 
 # Globals
 trail_points = []
-bounce_points = []         # 👈 new: to store bounce locations
+bounce_points = []
 prev_center = None
 prev_time = None
 prev_y = None
@@ -13,9 +13,12 @@ bounces = 0
 pixels_per_meter = 850 / 2.74  # ≈ 310.22
 max_trail_length = 30
 max_distance_per_frame = 50
+bounce_y_threshold = 15  # Minimum y-difference for bounce detection
+bounce_time_threshold = 0.5  # Minimum time between bounces
+last_bounce_time = 0  # Timestamp of the last valid bounce
 
 def detect_ball(frame):
-    global trail_points, bounce_points, prev_center, prev_time, prev_y, bounces
+    global trail_points, bounce_points, prev_center, prev_time, prev_y, bounces, last_bounce_time
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (9, 9), 2)
@@ -48,7 +51,7 @@ def detect_ball(frame):
             if len(trail_points) > max_trail_length:
                 trail_points.pop(0)
 
-            # Speed estimation
+            # Speed estimation (in pixels per second)
             if prev_center is not None and prev_time is not None:
                 dx = x - prev_center[0]
                 dy = y - prev_center[1]
@@ -56,37 +59,36 @@ def detect_ball(frame):
                 dt = current_time - prev_time
                 speed = dist / dt if dt > 0 else 0
 
-                # Convert to km/h
-                speed_mps = speed / pixels_per_meter
-                speed_kmph = speed_mps * 3.6
-
-                # Show speed
-                cv2.putText(frame, f"Speed: {speed_kmph:.2f} km/h", (20, 40),
+                # Show speed in pixels per second
+                cv2.putText(frame, f"Speed: {speed:.2f} px/s", (20, 40),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-
-                # Show HIT
-                if speed_kmph > 25 and 300 < y < 460:
-                    cv2.circle(frame, center, 30, (0, 255, 255), 3)
-                    cv2.putText(frame, "HIT!", (x + 20, y),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
 
             prev_center = center
             prev_time = current_time
 
-            # Bounce detection
+            # Improved Bounce detection
             if prev_y is not None:
-                if prev_y < y and 300 < y < 460:
+                y_diff = y - prev_y
+                time_since_last_bounce = current_time - last_bounce_time
+
+                # Valid bounce conditions
+                if (y_diff > bounce_y_threshold and 
+                    300 < y < 460 and  # Y-coordinate range for table
+                    time_since_last_bounce > bounce_time_threshold and  # Time gap between bounces
+                    x < 800):  # Avoid bounces far to the right
                     bounces += 1
-                    bounce_points.append(center)  # 👈 Save bounce point
-                    print(f"🔵 Bounce detected! Total: {bounces}")
+                    bounce_points.append(center) 
+                    last_bounce_time = current_time  # Update last valid bounce time
+                    print(f"Bounce detected! Total: {bounces}")
+
             prev_y = y
 
     # Draw ball trail
     for i in range(1, len(trail_points)):
         cv2.line(frame, trail_points[i - 1], trail_points[i], (255, 255, 0), 2)
 
-    # Draw bounce markers
-    for point in bounce_points:
+    # Draw bounce markers (reduce clutter by limiting recent bounces only)
+    for point in bounce_points[-10:]:  # Show last 10 bounces
         cv2.circle(frame, point, 20, (255, 0, 255), 2)  # Purple circle
 
     # Display bounce count
