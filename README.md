@@ -1,7 +1,7 @@
 Smart Table Tennis Analyzer – Comprehensive Report
 
 Team Members:
-Oneyibo Aghogho
+Oneyibo Edoraghogho
 Onyeisi Chidiebere
 
 1. Project Overview
